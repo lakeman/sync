@@ -17,8 +17,9 @@ struct sync_state;
 
 typedef void (*peer_has) (void *context, void *peer_context, const sync_key_t *key);
 typedef void (*peer_does_not_have) (void *context, void *peer_context, void *key_context, const sync_key_t *key);
+typedef void (*peer_now_has) (void *context, void *peer_context, void *key_context, const sync_key_t *key);
 
-struct sync_state* sync_alloc_state(void *context, peer_has has, peer_does_not_have has_not);
+struct sync_state* sync_alloc_state(void *context, peer_has has, peer_does_not_have has_not, peer_now_has now_has);
 void sync_free_state(struct sync_state *state);
 
 // throw away all state related to peer

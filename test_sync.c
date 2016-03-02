@@ -91,6 +91,13 @@ void test_peer_does_not_have (void *context, void *peer_context, void *key_conte
   transfer_tail = transfer;
 }
 
+void test_peer_now_has (void *context, void *peer_context, void *key_context, const sync_key_t *key){
+  struct test_peer *state = (struct test_peer *)context;
+  struct test_peer *peer = (struct test_peer *)peer_context;
+  LOGF("%s - %s has now received %s", 
+    state->name, peer->name, alloca_sync_key(key));
+}
+
 static void signal_handler(int signal)
 {
   if (quit)
@@ -131,7 +138,7 @@ int main(int argc, char **argv)
   unsigned i, j, total_keys=common;
   for (i=0;i<peer_count;i++){
     snprintf(peers[i].name, 10, "Peer %u", i);
-    peers[i].state = sync_alloc_state(&peers[i], test_peer_has, test_peer_does_not_have);
+    peers[i].state = sync_alloc_state(&peers[i], test_peer_has, test_peer_does_not_have, test_peer_now_has);
     
     unique[i]=10;
     if (argc>i+2)

@@ -72,6 +72,7 @@ struct sync_state{
   void *context;
   peer_has has;
   peer_does_not_have has_not;
+  peer_now_has now_has;
   unsigned key_count;
   unsigned sent_root;
   unsigned sent_messages;
@@ -402,11 +403,12 @@ void sync_free_peer_state(struct sync_state *state, void *peer_context){
   }
 }
 
-struct sync_state* sync_alloc_state(void *context, peer_has has, peer_does_not_have has_not){
+struct sync_state* sync_alloc_state(void *context, peer_has has, peer_does_not_have has_not, peer_now_has now_has){
   struct sync_state *state = allocate(sizeof (struct sync_state));
   state->context = context;
   state->has = has;
   state->has_not = has_not;
+  state->now_has = now_has;
   state->root.message.stored=1;
   return state;
 }
@@ -531,6 +533,8 @@ static unsigned peer_is_missing(struct sync_state *state, struct sync_peer_state
     if (peer_node->message.stored && allow_remove){
       // peer has now received this key?
 //      LOGF("Peer has received %s?", alloca_sync_key(&node->message.key));
+      if (state->now_has)
+	state->now_has(state->context, peer->peer_context, node->context, &node->message.key);
       remove_key(state, &peer->root, &node->message.key);
       peer->send_count --;
       return 1;
@@ -538,7 +542,7 @@ static unsigned peer_is_missing(struct sync_state *state, struct sync_peer_state
     return 0;
   }
   
-  add_key(&peer->root, &node->message.key, NULL, 1);
+  add_key(&peer->root, &node->message.key, node->context, 1);
   peer->send_count ++;
   state->progress=0;
   if (state->has_not)
@@ -598,6 +602,8 @@ static unsigned peer_has_received_all(struct sync_state *state, struct sync_peer
   unsigned ret=0;
   if (peer_node->message.prefix_len == KEY_LEN_BITS){
     if (peer_node->message.stored){
+      if (state->now_has)
+	state->now_has(state->context, peer_state->peer_context, peer_node->context, &peer_node->message.key);
       remove_key(state, &peer_state->root, &peer_node->message.key);
       peer_state->send_count --;
       ret=1;
