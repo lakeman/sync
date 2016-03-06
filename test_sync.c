@@ -66,6 +66,9 @@ void test_peer_has (void *context, void *peer_context, const sync_key_t *key){
   
   LOGF("%s - %s has %s that we need", 
     state->name, peer->name, alloca_sync_key(key));
+    
+  assert(sync_key_exists(peer->state, key)==1);
+  assert(sync_key_exists(state->state, key)==0);
 }
 
 void test_peer_does_not_have (void *context, void *peer_context, void *key_context, const sync_key_t *key){
@@ -76,6 +79,8 @@ void test_peer_does_not_have (void *context, void *peer_context, void *key_conte
   LOGF("%s - %s does not have %s that we need to send", 
     state->name, peer->name, alloca_sync_key(key));
   
+  assert(sync_key_exists(state->state, key)==1);
+  assert(sync_key_exists(peer->state, key)==0);
   assert(test_key->initial_peer);
   
   struct test_transfer *transfer = allocate(sizeof(struct test_transfer));
@@ -94,8 +99,12 @@ void test_peer_does_not_have (void *context, void *peer_context, void *key_conte
 void test_peer_now_has (void *context, void *peer_context, void *key_context, const sync_key_t *key){
   struct test_peer *state = (struct test_peer *)context;
   struct test_peer *peer = (struct test_peer *)peer_context;
+  
   LOGF("%s - %s has now received %s", 
     state->name, peer->name, alloca_sync_key(key));
+    
+  assert(sync_key_exists(state->state, key)==1);
+  assert(sync_key_exists(peer->state, key)==1);
 }
 
 static void signal_handler(int signal)

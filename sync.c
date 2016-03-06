@@ -532,7 +532,6 @@ static unsigned peer_is_missing(struct sync_state *state, struct sync_peer_state
   if (peer_node){
     if (peer_node->message.stored && allow_remove){
       // peer has now received this key?
-//      LOGF("Peer has received %s?", alloca_sync_key(&node->message.key));
       if (state->now_has)
 	state->now_has(state->context, peer->peer_context, node->context, &node->message.key);
       remove_key(state, &peer->root, &node->message.key);
@@ -609,7 +608,7 @@ static unsigned peer_has_received_all(struct sync_state *state, struct sync_peer
       ret=1;
     }
   }else{
-    // duplicate the child array, as removing an immediate child key *will* also free this peer node.
+    // duplicate the child pointers, as removing an immediate child key *will* also free this peer node.
     struct node *children[NODE_CHILDREN];
     memcpy(children, peer_node->children, sizeof(children));
     for (unsigned i=0;i<NODE_CHILDREN;i++)
@@ -625,16 +624,18 @@ static unsigned peer_has_received_all(struct sync_state *state, struct sync_peer
 static struct node * remove_differences(struct sync_peer_state *peer_state, key_message_t *message)
 {
   if (peer_state->send_count + peer_state->recv_count==0 || !message->stored)
-    return 0;
+    return NULL;
   
   struct node *peer_node = &peer_state->root;
   uint8_t prefix_len = 0;
   
   while(prefix_len < message->prefix_len){
+    
     if (peer_node->message.prefix_len == KEY_LEN_BITS){
       if (cmp_message(message, &peer_node->message)==0)
 	break;
-      return NULL;
+      if (message->prefix_len == KEY_LEN_BITS)
+	return NULL;
     }
     
     uint8_t child_index = sync_get_bits(prefix_len, PREFIX_STEP_BITS, &message->key);
