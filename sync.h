@@ -34,7 +34,7 @@ int sync_key_exists(const struct sync_state *state, const sync_key_t *key);
 size_t sync_build_message(struct sync_state *state, uint8_t *buff, size_t len);
 
 // process a message received from a peer.
-int sync_recv_message(struct sync_state *state, void *peer_context, uint8_t *buff, size_t len);
+int sync_recv_message(struct sync_state *state, void *peer_context, const uint8_t *buff, size_t len);
 
 
 #endif

@@ -34,14 +34,14 @@ static void *allocate(size_t length){
 #define INTERESTING_COUNT 16
 
 typedef struct {
-  uint8_t stored:1;
   uint8_t min_prefix_len:7;
+  uint8_t stored:1;
   uint8_t prefix_len;
   sync_key_t key;
 }key_message_t;
 
 #define MESSAGE_FROM_KEY(K) {.key=*K, .prefix_len=KEY_LEN_BITS}
-
+#define MESSAGE_BYTES (KEY_LEN +2)
 
 // definitions for how we track the state of a set of keys
 
@@ -438,6 +438,13 @@ void sync_free_state(struct sync_state *state){
   free(state);
 }
 
+static void copy_message(uint8_t *buff, const key_message_t *message)
+{
+  buff[0] = (message->stored?0x80:0) | (message->min_prefix_len & 0x7f);
+  buff[1] = message->prefix_len;
+  memcpy(&buff[2], &message->key.key[0], KEY_LEN);
+}
+
 // prepare a network packet buffer, with as many queued outgoing messages that we can fit
 size_t sync_build_message(struct sync_state *state, uint8_t *buff, size_t len)
 {
@@ -447,13 +454,13 @@ size_t sync_build_message(struct sync_state *state, uint8_t *buff, size_t len)
   
   struct node *tail = state->transmit_ptr;
   
-  while(tail && offset + sizeof(key_message_t)<=len){
+  while(tail && offset + MESSAGE_BYTES<=len){
     struct node *head = tail->transmit_next;
     assert(head->transmit_prev == tail);
     
     if (head->send_state == QUEUED){
-      bcopy(&head->message, &buff[offset], sizeof(key_message_t));
-      offset+=sizeof(key_message_t);
+      copy_message(&buff[offset], &head->message);
+      offset+=MESSAGE_BYTES;
       head->sent_count++;
       state->sent_record_count++;
       if (head->sent_count>=SYNC_MAX_RETRIES)
@@ -487,10 +494,10 @@ size_t sync_build_message(struct sync_state *state, uint8_t *buff, size_t len)
   state->transmit_ptr = tail;
   
   // If we don't have anything else to send, always send our root tree node
-  if(offset + sizeof(key_message_t)<=len && offset==0){
+  if(offset + MESSAGE_BYTES<=len && offset==0){
     state->sent_root++;
-    bcopy(&state->root.message, &buff[offset], sizeof(key_message_t));
-    offset+=sizeof(key_message_t);
+    copy_message(&buff[offset], &state->root.message);
+    offset+=MESSAGE_BYTES;
     state->sent_record_count++;
   }
   
@@ -834,7 +841,7 @@ static int recv_key(struct sync_state *state, struct sync_peer_state *peer_state
 }
 
 // Process all incoming messages from this packet buffer
-int sync_recv_message(struct sync_state *state, void *peer_context, uint8_t *buff, size_t len)
+int sync_recv_message(struct sync_state *state, void *peer_context, const uint8_t *buff, size_t len)
 {
   assert(peer_context);
   
@@ -851,13 +858,22 @@ int sync_recv_message(struct sync_state *state, void *peer_context, uint8_t *buf
   }
   
   size_t offset=0;
-  if (len%sizeof(key_message_t))
+  if (len%MESSAGE_BYTES)
     return -1;
-  while(offset + sizeof(key_message_t)<=len){
-    key_message_t *message = (key_message_t *)&buff[offset];
-    if (recv_key(state, peer_state, message)==-1)
+  while(offset + MESSAGE_BYTES<=len){
+    const uint8_t *p = &buff[offset];
+    key_message_t message;
+    bzero(&message, sizeof message);
+    
+    message.stored = (p[0]&0x80)?1:0;
+    message.min_prefix_len = p[0]&0x7F;
+    message.prefix_len = p[1];
+    memcpy(&message.key.key[0], &p[2], KEY_LEN);
+    
+    if (recv_key(state, peer_state, &message)==-1)
       return -1;
-    offset+=sizeof(key_message_t);
+      
+    offset+=MESSAGE_BYTES;
   }
   return 0;
 }
