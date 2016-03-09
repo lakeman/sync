@@ -29,6 +29,7 @@ void sync_free_peer_state(struct sync_state *state, void *peer_context);
 // if the key is already present, the context will be updated
 void sync_add_key(struct sync_state *state, const sync_key_t *key, void *key_context);
 int sync_key_exists(const struct sync_state *state, const sync_key_t *key);
+int sync_has_transmit_queued(const struct sync_state *state);
 
 // ask for a message to be inserted into buff, returns packet length
 size_t sync_build_message(struct sync_state *state, uint8_t *buff, size_t len);

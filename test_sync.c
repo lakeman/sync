@@ -39,10 +39,17 @@ static int send_data(struct test_peer *peers, unsigned peer_count, unsigned peer
   for (unsigned i=0;i<peer_count;i++){
     if (i!=peer_index){
       LOGF("Receiving by %s", peers[i].name);
-      sync_recv_message(peers[i].state, &peers[peer_index], packet_buff, len);
-      
+      int r = sync_recv_message(peers[i].state, &peers[peer_index], packet_buff, len);
+      assert(r==0);
       // does peer peer_index know about all the actual differences between itself and peer i
-      key_message_t message = peers[peer_index].state->root.message;
+      
+      key_message_t message;
+      if (peers[peer_index].state->root){
+	message = peers[peer_index].state->root->message;
+      }else{
+	bzero(&message, sizeof message);
+	message.stored = 1;
+      }
       
       struct sync_peer_state *peer_state = peers[i].state->peers;
       assert(peer_state);
@@ -53,8 +60,17 @@ static int send_data(struct test_peer *peers, unsigned peer_count, unsigned peer
       
       remove_differences(peer_state, &message);
       
-      if (cmp_message(&message, &peers[i].state->root.message)!=0)
-	ret = 1;
+      if (peers[i].state->root){
+	if (cmp_message(&message, &peers[i].state->root->message)!=0)
+	  ret = 1;
+      }else{
+	unsigned k;
+	for (k=0;k<KEY_LEN;k++)
+	  if (message.key.key[k])
+	    break;
+	if (k==KEY_LEN)
+	  ret = 1;
+      }
     }
   }
   return ret;
