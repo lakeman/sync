@@ -447,6 +447,7 @@ static void copy_message(uint8_t *buff, const key_message_t *message)
   }else{
     bzero(buff, MESSAGE_BYTES);
     buff[0] = 0x80;
+    buff[1] = KEY_LEN_BITS+1;
   }
 }
 
@@ -674,7 +675,7 @@ static struct node * remove_differences(struct sync_peer_state *peer_state, key_
 static int recv_key(struct sync_state *state, struct sync_peer_state *peer_state, const key_message_t *message)
 {
   // sanity check on two header bytes.
-  if (message->min_prefix_len > message->prefix_len || message->prefix_len > KEY_LEN_BITS)
+  if (message->min_prefix_len > message->prefix_len || message->prefix_len > KEY_LEN_BITS+1)
     return -1;
   
   state->received_record_count++;
@@ -699,6 +700,12 @@ static int recv_key(struct sync_state *state, struct sync_peer_state *peer_state
   */
   if (!state->root){
     peer_add_key(state, peer_state, message);
+    return 0;
+  }
+
+  if (message->prefix_len == KEY_LEN_BITS+1){
+    // peer has no node of their own, they don't have anything that we have.
+    peer_missing_leaf_nodes(state, peer_state, state->root, NODE_CHILDREN, 0);
     return 0;
   }
 
