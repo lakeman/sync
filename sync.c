@@ -160,7 +160,8 @@ static void xor_children(struct node *node, key_message_t *dest)
   if (node->message.prefix_len == KEY_LEN_BITS){
     sync_xor(&node->message.key, dest);
   }else{
-    for (unsigned i=0;i<NODE_CHILDREN;i++){
+    unsigned i;
+    for (i=0;i<NODE_CHILDREN;i++){
       if (node->children[i])
 	xor_children(node->children[i], dest);
     }
@@ -236,8 +237,8 @@ static void free_node(struct sync_state *state, struct node *node)
 {
   if (!node)
     return;
-  
-  for (unsigned i=0;i<NODE_CHILDREN;i++)
+  unsigned i;
+  for (i=0;i<NODE_CHILDREN;i++)
     free_node(state, node->children[i]);
   
   if (node->transmit_next){
@@ -298,7 +299,8 @@ static void remove_key(struct sync_state *state, struct node **root, const sync_
   
   node = NULL;
   // If *parent has <= 1 child now, we need to remove *parent as well
-  for (unsigned i=0;i<NODE_CHILDREN;i++){
+  unsigned i;
+  for (i=0;i<NODE_CHILDREN;i++){
     if ((*parent)->children[i]){
       if (node)
 	return;
@@ -570,7 +572,8 @@ static void peer_missing_leaf_nodes(
     if (peer_is_missing(state, peer, node, allow_remove))
       queue_node(state, node, 1);
   }else{
-    for (unsigned i=0;i<NODE_CHILDREN;i++){
+    unsigned i;
+    for (i=0;i<NODE_CHILDREN;i++){
       if (i!=except && node->children[i])
 	peer_missing_leaf_nodes(state, peer, node->children[i], NODE_CHILDREN, allow_remove);
     }
@@ -595,16 +598,6 @@ static void peer_add_key(struct sync_state *state, struct sync_peer_state *peer_
   }
 }
 
-/*
-static void de_queue(struct node *node){
-  if (node->send_state == QUEUED)
-    node->send_state = DONT_SEND;
-  for (unsigned i=0;i<NODE_CHILDREN;i++)
-    if (node->children[i])
-      de_queue(node->children[i]);
-}
-*/
-
 static unsigned peer_has_received_all(struct sync_state *state, struct sync_peer_state *peer_state, struct node *peer_node)
 {
   if (!peer_node)
@@ -622,7 +615,8 @@ static unsigned peer_has_received_all(struct sync_state *state, struct sync_peer
     // duplicate the child pointers, as removing an immediate child key *will* also free this peer node.
     struct node *children[NODE_CHILDREN];
     memcpy(children, peer_node->children, sizeof(children));
-    for (unsigned i=0;i<NODE_CHILDREN;i++)
+    unsigned i;
+    for (i=0;i<NODE_CHILDREN;i++)
       ret+=peer_has_received_all(state, peer_state, children[i]);
   }
   return ret;
@@ -715,7 +709,8 @@ static int recv_key(struct sync_state *state, struct sync_peer_state *peer_state
   struct node *node = state->root;
   uint8_t prefix_len = 0;
   uint8_t is_blank = 1;
-  for (unsigned i=(peer_message.prefix_len>>3)+1;i<KEY_LEN && is_blank;i++)
+  unsigned i;
+  for (i=(peer_message.prefix_len>>3)+1;i<KEY_LEN && is_blank;i++)
     if (peer_message.key.key[i])
       is_blank = 0;
   
@@ -786,7 +781,8 @@ static int recv_key(struct sync_state *state, struct sync_peer_state *peer_state
 	}
 	
 	// queue the transmission of all child nodes of this node
-	for (unsigned i=0;i<NODE_CHILDREN;i++){
+        unsigned i;
+	for (i=0;i<NODE_CHILDREN;i++){
 	  if (node->children[i])
 	    queue_node(state, node->children[i], 0);
 	}
