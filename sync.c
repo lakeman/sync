@@ -896,3 +896,28 @@ int sync_recv_message(struct sync_state *state, void *peer_context, const uint8_
   return 0;
 }
 
+static void enum_diffs(struct sync_state *state, struct sync_peer_state *peer_state, struct node *node,
+  void (*callback)(void *context, void *peer_context, const sync_key_t *key, uint8_t theirs))
+{
+  if (!node)
+    return;
+  if (node->message.prefix_len == KEY_LEN_BITS){
+    callback(state->context, peer_state->peer_context, &node->message.key, node->message.stored);
+  }else{
+    unsigned i;
+    for (i=0;i<NODE_CHILDREN;i++){
+      enum_diffs(state, peer_state, node->children[i], callback);
+    }
+  }
+}
+
+void sync_enum_differences(struct sync_state *state,
+  void (*callback)(void *context, void *peer_context, const sync_key_t *key, uint8_t theirs))
+{
+  struct sync_peer_state *peer_state = state->peers;
+  while(peer_state){
+    enum_diffs(state, peer_state, peer_state->root, callback);
+    peer_state = peer_state->next;
+  }
+}
+
